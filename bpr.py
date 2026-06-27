@@ -18,6 +18,7 @@ from scipy.sparse import csr_matrix
 N_USERS = 876_146
 N_ITEMS = 2_360_651
 
+
 class BPRMF(nn.Module):
     def __init__(self, n_users, n_items, dim):
         super().__init__()
@@ -142,6 +143,8 @@ def main(args):
     eval_items = val_items[eval_idx]
 
     model = BPRMF(N_USERS, N_ITEMS, args.embed_dim).to(args.device)
+    if args.ckpt:
+        model.load_state_dict(torch.load(args.ckpt, weights_only=True))
     opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
 
     print("Baseline eval")
@@ -198,60 +201,44 @@ def main(args):
     log_csv.close()
     print("Done...")
 
+
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--seed",
-        default=44,
-        type=int,
+    parser.add_argument("--seed", default=44, type=int,
         help="Random number seed"
     )
-    parser.add_argument("--device",
-        default="cuda",
-        choices=["cuda", "cpu"],
-    )
-    parser.add_argument("--output",
-        default="./output",
-        type=str,
+    parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
+    parser.add_argument("--output", default="./output", type=str,
         help="Where to output model weights, logs, etc."
     )
-    parser.add_argument("-e", "--epoch",
-        default=2, # BPR MF converges fairly fast
-        type=int,
+    # BPR MF converges fairly fast, no need for more epochs.
+    # In a pinch you could probably do 1 epoch
+    parser.add_argument("-e", "--epoch", default=2, type=int,
         help="Epochs"
     )
-    parser.add_argument("--lr",
-        default=1e-2,
-        type=float,
+    parser.add_argument("--lr", default=1e-2, type=float,
         help="Learning rate"
     )
-    parser.add_argument("--decay",
-        default=1e-5,
-        type=float,
+    parser.add_argument("--decay", default=1e-5, type=float,
         help="Weight decay"
     )
-    parser.add_argument("--batch",
-        default=8192,
-        type=int,
+    parser.add_argument("--batch", default=8192, type=int,
         help="Batch size"
     )
-    parser.add_argument("--embed_dim",
-        default=64,
-        type=int,
+    parser.add_argument("--embed_dim", default=64, type=int,
         help="Embedding dimension"
     )
-    parser.add_argument("--negatives",
-        default=100,
-        type=int,
+    parser.add_argument("--negatives", default=100, type=int,
         help="Number of negative examples to show per batch"
     )
-    parser.add_argument("-k",
-        default=10,
-        type=int,
+    parser.add_argument("-k", default=10, type=int,
         help="When computing recall and NDCG, top k results will count as valid"
     )
-    parser.add_argument("--eval-only",
-        action="store_true",
+    parser.add_argument("--eval-only", action="store_true",
         help="Only run an evaluation"
+    )
+    parser.add_argument("--ckpt", type=str,
+        help="Load a checkpoint"
     )
     args = parser.parse_args()
     main(args)
