@@ -45,3 +45,32 @@ positive result, a book someone would want to read?):
 | NDCG   | 0.255 |
 
 ### Method 2: Two tower approach
+
+For the two tower approach, we have a module (a tower) which casts a user / book into an embedded
+space. One tower for users, one for books, hence the name. Once we have these vector representations
+of a user and a book, we multipy these together elementwise and sum. In the end we get a score for
+each user / book combination.
+
+Otherwise, loading data, prepping, etc. is largely the same. We are still using implicit feedback here,
+so even 1-star reviews count as a positive interaction. Accounting for review data will be next!
+| Metric | Score |
+|--------|-------|
+| Recall | 0.839 |
+| NDCG   | 0.701 |
+
+#### Giving the reviewer more data about book interactions
+
+So far, we have just been treating any user interaction as positive. However, our dataset breaks this
+up into shelved books, read but unrated books, and rated books. These are different scales of interaction
+and we want to weight them differently. I have found this to work best:
+
+| Signal | Weight |
+|--------|--------|
+|shelved|0.3|
+|read, unrated|0.6|
+|1 star|used as negative example|
+|2 star|used as negative example|
+|3 stars|0.7|
+|4 stars|1.0|
+|5 stars|1.3|
+|||
