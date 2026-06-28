@@ -19,6 +19,11 @@ wget https://mcauleylab.ucsd.edu/public_datasets/gdrive/goodreads/goodreads_book
 
 Unpack the gz files with: `gunzip *.gz`
 
+The csv/json format is too large to reasonably put into memory, so use this script to convert it to parquet:
+```
+uv run scripts/data_preprocess.py
+```
+
 ### Method 1: Bayesian Personalized Ranking with Matrix Factorization
 
 [Bayesian Personalized Ranking](https://arxiv.org/pdf/1205.2618) (BPR) is a method for learning
@@ -34,7 +39,7 @@ of weight to be applied to a user and items the users are selecting from (in thi
 
 To run the training for BPR, run this:
 ```
-uv run bpr.py
+uv run scripts/bpr.py
 ```
 
 The default settings yield the following results for `k=10` (i.e. do the top 10 predictions get a
@@ -56,7 +61,7 @@ so even 1-star reviews count as a positive interaction. Accounting for review da
 
 To run the training for two tower, try this:
 ```
-uv run two_tower.py
+uv run scripts/two_tower.py
 ```
 | Metric | Score |
 |--------|-------|
@@ -81,7 +86,7 @@ and we want to weight them differently. I have found this to work best:
 
 To run the training with weights:
 ```
-uv run two_tower.py --weighted
+uv run scripts/two_tower.py --weighted
 ```
 | Metric | Score |
 |--------|-------|
@@ -111,7 +116,7 @@ We can precompute some inference artifacts that are a) expensive and b) needed f
 
 This can be done with:
 ```
-uv run inference_artifacts.py --ckpt ./path/to/trained/model.pt
+uv run scripts/gen_inf_artifacts.py --ckpt ./path/to/trained/model.pt
 ```
 
 The following needs to be uploaded to S3:
@@ -123,7 +128,7 @@ Note that we don't need the trained model. The useful information from the model
 
 Next we need an API which loads these artifacts on start and serves the two endpoints. To run locally:
 ```
-uv run uvicorn inference_api:app
+uv run uvicorn backend:app
 ```
 
 To test the search (if you have `jq`, otherwise just omit the pipe):
