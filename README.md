@@ -60,8 +60,8 @@ uv run two_tower.py
 ```
 | Metric | Score |
 |--------|-------|
-| Recall | 0.839 |
-| NDCG   | 0.701 |
+| Recall | 0.840 |
+| NDCG   | 0.659 |
 
 #### Giving the reviewer more data about book interactions
 
@@ -91,3 +91,52 @@ uv run two_tower.py --weighted
 So essentially not any better! My running theory here is that most of the value is already captured
 through user interaction. Most of the time when people read a book, they finish it, and most of the
 time they rate it 3+ stars.
+
+### Deploy to AWS
+
+I thought it would be really cool to deploy this to a webpage so that people can actually try the
+model out.
+
+Strategy:
+- Use github.io for the frontend site. I don't want to pay for the frontend stuff. The frontend will
+be handled in another repo which I will link [here]().
+- Use Lambda as the backend. Costs money, but should be pretty minimal because I don't expect too many
+users.
+
+Two routes:
+- `/search`: Allows users to search for books within the database that we have. Adds it to a list of books they have read
+- `/recommend`: Given the list of books they have read, return `k` recommendations
+
+We can precompute some inference artifacts that are a) expensive and b) needed for every recommend / search call.
+
+This can be done with:
+```
+uv run inference_artifacts.py --ckpt ./path/to/trained/model.pt
+```
+
+The following needs to be uploaded to S3:
+- `book_lookup.parquet`
+- `item_embeddings.npy`
+
+Note that we don't need the trained model. The useful information from the model has been encoded in
+`item_embeddings.npy`.
+
+Next we need an API which loads these artifacts on start and serves the two endpoints. To run locally:
+```
+uv run uvicorn inference_api:app
+```
+
+To test the search (if you have `jq`, otherwise just omit the pipe):
+```
+curl "http://localhost:8000/search?q=harry%20potter | jq"
+```
+
+And then get recommendations (the book id passed in is for Harry Potter and the Sorcerer's Stone):
+```
+curl -X POST http://localhost:8000/recommend \
+  -H "Content-Type: application/json" \
+  -d '{
+    "book_ids": [663092],
+    "top_k": 10
+  }' | jq
+```

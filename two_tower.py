@@ -57,10 +57,10 @@ class TwoTower(nn.Module):
         self.item_tower = Tower(embed_dim, hidden_dim, output_dim, dropout)
 
     def user_repr(self, user_ids):
-        return self.user_tower(self.user_emb(user_ids))
+        return F.normalize(self.user_tower(self.user_emb(user_ids)))
 
     def item_repr(self, item_ids):
-        return self.item_tower(self.item_emb(item_ids))
+        return F.normalize(self.item_tower(self.item_emb(item_ids)))
 
     def score(self, user_ids, item_ids):
         u = self.user_repr(user_ids)
@@ -213,11 +213,11 @@ def main(args):
 
     # Logging set up
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    if not os.path.exists(args.output+"/tt_log.csv"):
-        os.mknod(args.output+"/tt_log.csv")
+    if not os.path.exists(args.output+"tt_log.csv"):
+        os.mknod(args.output+"tt_log.csv")
     
-    torch.save(model.state_dict(), args.output + "/tt_best.pt")
-    torch.save(model.state_dict(), args.output + "/tt_last.pt")
+    torch.save(model.state_dict(), args.output+"tt_best.pt")
+    torch.save(model.state_dict(), args.output+"tt_last.pt")
 
     logged_metrics = {
         "epoch": 0,
@@ -227,7 +227,7 @@ def main(args):
         "ndcg": ndcg,
         "best_ndcg": ndcg
     }
-    log_csv = open(args.output + "/tt_log.csv", "w")
+    log_csv = open(args.output+"tt_log.csv", "w")
     csv_writer = csv.DictWriter(log_csv, fieldnames=logged_metrics.keys())
     csv_writer.writeheader()
     csv_writer.writerow(logged_metrics)
@@ -245,8 +245,8 @@ def main(args):
         )
 
         if recall > logged_metrics["best_recall"]:
-            torch.save(model.state_dict(), args.output + "/tt_best.pt")
-        torch.save(model.state_dict(), args.output + "/tt_last.pt")
+            torch.save(model.state_dict(), args.output+"tt_best.pt")
+        torch.save(model.state_dict(), args.output+"tt_last.pt")
 
         logged_metrics["epoch"] = epoch+1
         logged_metrics["epoch_time_sec"] = elapsed
@@ -267,7 +267,7 @@ if __name__ == "__main__":
         help="Random number seed"
     )
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu"])
-    parser.add_argument("--output", default="./output", type=str,
+    parser.add_argument("--output", default="./output/", type=str,
         help="Where to output model weights, logs, etc."
     )
     parser.add_argument("-e", "--epoch", default=4, type=int,

@@ -12,3 +12,4 @@ wheels/
 # Data / models / run output
 data/
 output/
+inference_artifacts/
