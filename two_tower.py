@@ -68,12 +68,32 @@ class TwoTower(nn.Module):
         return (u * i).sum(dim=-1)
 
 
-def load_split(path):
-    """Given a train/test split, load the users and books"""
-    df = pl.read_parquet(path, columns=["user_id", "book_id"])
+def load_split(path, weighted=False):
+    """Given a train/test split, load the users and books. If weighted,
+    also load rating/is_read and return a confidence weight per row, with
+    rating 1-2 (explicit dislike) rows dropped entirely as positive
+    anchors -- they shouldn't be trained toward as if they were liked."""
+    cols = ["user_id", "book_id"]
+    if weighted:
+        cols += ["rating", "is_read"]
+    df = pl.read_parquet(path, columns=cols)
+
+    if weighted:
+        df = df.filter(~pl.col("rating").is_in([1, 2]))
+        weight = (pl.when(pl.col("rating") == 5).then(1.3)
+            .when(pl.col("rating") == 4).then(1.0)
+            .when(pl.col("rating") == 3).then(0.7)
+            .when(pl.col("is_read") == 1).then(0.6)  # rating==0, read
+            .otherwise(0.3)                          # rating==0, shelved only
+        )
+        df = df.with_columns(weight.alias("weight"))
+        weights = torch.from_numpy(df["weight"].to_numpy().astype(np.float32))
+    else:
+        weights = None
+
     users = torch.from_numpy(df["user_id"].to_numpy().astype(np.int64))
     items = torch.from_numpy(df["book_id"].to_numpy().astype(np.int64))
-    return users, items
+    return users, items, weights
 
 
 def build_interaction_matrix(datasets):
@@ -87,7 +107,7 @@ def build_interaction_matrix(datasets):
     return csr_matrix((data, (rows, cols)), shape=(N_USERS, N_ITEMS))
 
 
-def train_epoch(args, model, opt, users, items):
+def train_epoch(args, model, opt, users, items, weights):
     n = users.shape[0]
     perm = torch.randperm(n)
     total_loss = 0.0
@@ -106,7 +126,13 @@ def train_epoch(args, model, opt, users, items):
         # (B, B), row i's positive is column i
         logits = (u_vec @ i_vec.T) / args.temperature  
         labels = torch.arange(u_vec.shape[0], device=args.device)
-        loss = F.cross_entropy(logits, labels)
+
+        if weights is not None:
+            w = weights[idx].to(args.device, non_blocking=True)
+            per_row_loss = F.cross_entropy(logits, labels, reduction="none")
+            loss = (per_row_loss * w).sum() / w.sum()
+        else:
+            loss = F.cross_entropy(logits, labels)
 
         opt.zero_grad()
         loss.backward()
@@ -157,8 +183,8 @@ def main(args):
     print(f"Device: {args.device}")
 
     print("Loading data...")
-    train_users, train_items = load_split("./data/train.parquet")
-    val_users, val_items = load_split("./data/val.parquet")
+    train_users, train_items, train_weights = load_split("./data/train.parquet", weighted=args.weighted)
+    val_users, val_items, _ = load_split("./data/val.parquet")
 
     print("Building interaction matrix...")
     interaction_matrix = build_interaction_matrix([
@@ -209,7 +235,7 @@ def main(args):
     print("Starting training")
     for epoch in range(args.epoch):
         t0 = time.time()
-        loss = train_epoch(args, model, opt, train_users, train_items)
+        loss = train_epoch(args, model, opt, train_users, train_items, train_weights)
         recall, ndcg = evaluate(args, model, eval_users, eval_items, interaction_matrix)
         elapsed = time.time()-t0
         print(
@@ -276,6 +302,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-k", default=10, type=int,
         help="Top-k for recall/NDCG"
+    )
+    parser.add_argument("--weighted", action="store_true",
+        help="Use rating-based confidence weighting and drop rating 1-2 as positives"
     )
     parser.add_argument("--eval-only", action="store_true",
         help="Only run an evaluation"

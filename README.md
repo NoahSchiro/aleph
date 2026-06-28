@@ -53,6 +53,11 @@ each user / book combination.
 
 Otherwise, loading data, prepping, etc. is largely the same. We are still using implicit feedback here,
 so even 1-star reviews count as a positive interaction. Accounting for review data will be next!
+
+To run the training for two tower, try this:
+```
+uv run two_tower.py
+```
 | Metric | Score |
 |--------|-------|
 | Recall | 0.839 |
@@ -73,4 +78,16 @@ and we want to weight them differently. I have found this to work best:
 |3 stars|0.7|
 |4 stars|1.0|
 |5 stars|1.3|
-|||
+
+To run the training with weights:
+```
+uv run two_tower.py --weighted
+```
+| Metric | Score |
+|--------|-------|
+| Recall | 0.831 |
+| NDCG   | 0.700 |
+
+So essentially not any better! My running theory here is that most of the value is already captured
+through user interaction. Most of the time when people read a book, they finish it, and most of the
+time they rate it 3+ stars.
