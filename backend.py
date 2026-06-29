@@ -43,11 +43,6 @@ def _ensure_local(filename):
 def load_assets():
     app.state.item_embeddings = np.load(_ensure_local("item_embeddings.npy"))
     app.state.book_lookup = pl.read_parquet(_ensure_local("book_lookup.parquet"))
-    app.state.book_lookup_dict = dict(
-        zip(app.state.book_lookup["book_id_csv"], zip(
-            app.state.book_lookup["title"], app.state.book_lookup["author"]
-        ))
-    )
     print(f"Loaded {app.state.item_embeddings.shape[0]:,} item embeddings")
     print(f"Loaded {app.state.book_lookup.height:,} book titles")
 
@@ -112,9 +107,12 @@ def recommend(req: RecommendRequest):
     top_idx = np.argpartition(-scores, req.top_k)[: req.top_k]
     top_idx = top_idx[np.argsort(-scores[top_idx])]
 
+    matches = app.state.book_lookup.filter(pl.col("book_id_csv").is_in(top_idx.tolist()))
+    lookup = dict(zip(matches["book_id_csv"], zip(matches["title"], matches["author"])))
+
     results = []
     for idx in top_idx:
-        title, author = app.state.book_lookup_dict.get(int(idx), ("Unknown", ""))
+        title, author = lookup.get(int(idx), ("Unknown", ""))
         results.append(BookResult(book_id=int(idx), title=title, author=author, score=float(scores[idx])))
     return results
 

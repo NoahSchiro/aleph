@@ -145,3 +145,9 @@ curl -X POST http://localhost:8000/recommend \
     "top_k": 10
   }' | jq
 ```
+
+This backend is wrapped in a `Dockerfile` so that we can deploy it. Create a project namespace in AWS
+ECR and there will be instructions for how to connect your account and push your container up. Once
+you have a container in ECR, create a lambda function to use that container. Experimentally, I found
+we need about 2Gi of memory, 1Gi of emphermeral storage, the lambda needs to connect to your s3 bucket
+with the inference artifacts. The exact details for working with AWS are out of scope for this repo.
