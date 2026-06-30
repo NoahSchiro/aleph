@@ -13,10 +13,18 @@ import boto3
 import numpy as np
 import polars as pl
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from pydantic import BaseModel
 
 app = FastAPI(title="Book Recommender")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "https://noahschiro.github.io"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 # This will be set in Lambda env vars
 # You may need to change the ASSET_DIR locally if you output the inference artifacts elsewhere
