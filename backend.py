@@ -57,7 +57,6 @@ def load_assets():
 
 class RecommendRequest(BaseModel):
     book_ids: list[int]
-    ratings: list[int] | None = None
     top_k: int = 10
 
 
@@ -85,31 +84,24 @@ def search(q: str, limit: int = 10):
 def recommend(req: RecommendRequest):
     if not req.book_ids:
         raise HTTPException(400, "book_ids must be non-empty")
-    if req.ratings is not None and len(req.ratings) != len(req.book_ids):
-        raise HTTPException(400, "ratings must match book_ids length")
 
     embeddings = app.state.item_embeddings
     n_items = embeddings.shape[0]
 
-    vecs, weights = [], []
+    vecs = []
     for i, book_id in enumerate(req.book_ids):
         if book_id < 0 or book_id >= n_items:
             raise HTTPException(400, f"unknown book_id {book_id}")
-        rating = req.ratings[i] if req.ratings else 0
-        if rating in EXCLUDE_RATINGS:
-            continue
-        weights.append(RATING_WEIGHT.get(rating, 0.6))
         vecs.append(embeddings[book_id])
 
     if not vecs:
-        raise HTTPException(400, "no usable books after filtering disliked ratings")
+        raise HTTPException(400, "no usable books")
 
     vecs = np.stack(vecs)
-    weights = np.array(weights, dtype=np.float32)
-    pseudo_user_vec = (vecs * weights[:, None]).sum(axis=0) / weights.sum()
+    pseudo_user_vec = vecs.sum(axis=0)
     
     # Inference: comes up with a score against every book
-    scores = embeddings @ pseudo_user_vec  
+    scores = embeddings @ pseudo_user_vec
     scores[req.book_ids] = -np.inf  # don't recommend books already in the input
 
     top_idx = np.argpartition(-scores, req.top_k)[: req.top_k]
