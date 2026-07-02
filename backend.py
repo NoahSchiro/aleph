@@ -31,10 +31,6 @@ app.add_middleware(
 S3_BUCKET = os.environ.get("MODEL_BUCKET", "")
 ASSET_DIR = "/tmp/assets" if S3_BUCKET else "./inference_artifacts/"
 
-# Same confidence mapping used during weighted training.
-RATING_WEIGHT = {5: 1.3, 4: 1.0, 3: 0.7, 0: 0.6}
-EXCLUDE_RATINGS = {1, 2}
-
 
 def _ensure_local(filename):
     """
@@ -68,12 +64,21 @@ class BookResult(BaseModel):
 
 
 @app.get("/search")
-def search(q: str, limit: int = 10):
+def search(q: str, limit: int = 20):
     if len(q) < 2:
         raise HTTPException(400, "query too short")
-    matches = app.state.book_lookup.filter(
-        pl.col("title").str.to_lowercase().str.contains(q.lower(), literal=True)
-    ).head(limit)
+
+    tokens = q.lower().split()
+    df = app.state.book_lookup
+
+    mask = pl.lit(True)
+    for tok in tokens:
+        mask = mask & (
+            pl.col("title").str.to_lowercase().str.contains(tok, literal=True)
+            | pl.col("author").str.to_lowercase().str.contains(tok, literal=True)
+        )
+
+    matches = df.filter(mask).head(limit)
     return [
         {"book_id": r["book_id_csv"], "title": r["title"], "author": r["author"]}
         for r in matches.iter_rows(named=True)
