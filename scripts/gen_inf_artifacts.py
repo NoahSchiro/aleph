@@ -61,9 +61,12 @@ def build_book_lookup(args):
                 continue
             authors = rec.get("authors", [])
             author = author_name.get(authors[0]["author_id"], "") if authors else ""
-            rows.append((csv_id, rec.get("title", ""), author))
+            lang = rec.get("language_code", "")
+            if "-" in lang: # en-GB, en-CA, en-US -> eng
+                lang = "eng"
+            rows.append((csv_id, rec.get("title", ""), author, lang))
 
-    df = pl.DataFrame(rows, schema=["book_id_csv", "title", "author"], orient="row")
+    df = pl.DataFrame(rows, schema=["book_id_csv", "title", "author", "language"], orient="row")
     df.write_parquet(args.output+"book_lookup.parquet")
     print(f"Saved book_lookup.parquet ({df.height:,} rows)")
 

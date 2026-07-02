@@ -100,9 +100,21 @@ def recommend(req: RecommendRequest):
     vecs = np.stack(vecs)
     pseudo_user_vec = vecs.sum(axis=0)
     
+    input_rows = app.state.book_lookup.filter(
+        pl.col("book_id_csv").is_in(req.book_ids)
+    )
+    allowed_langs = input_rows["language"].unique().to_list()
+    valid_rows = app.state.book_lookup.filter(
+        pl.col("language").is_in(allowed_langs)
+    )
+    valid_ids = valid_rows["book_id_csv"].to_numpy()
+
     # Inference: comes up with a score against every book
     scores = embeddings @ pseudo_user_vec
-    scores[req.book_ids] = -np.inf  # don't recommend books already in the input
+    lang_mask = np.full(n_items, True)
+    lang_mask[valid_ids] = False
+    scores[lang_mask] = -np.inf
+    scores[req.book_ids] = -np.inf # don't recommend books already in the input
 
     top_idx = np.argpartition(-scores, req.top_k)[: req.top_k]
     top_idx = top_idx[np.argsort(-scores[top_idx])]
