@@ -28,6 +28,13 @@ dependencies = [
 dev = [
     { name = "ruff" },
 ]
+serve = [
+    { name = "boto3" },
+    { name = "fastapi" },
+    { name = "mangum" },
+    { name = "numpy" },
+    { name = "polars" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -45,6 +52,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.15.20" }]
+serve = [
+    { name = "boto3", specifier = ">=1.43.36" },
+    { name = "fastapi", specifier = ">=0.138.1" },
+    { name = "mangum", specifier = ">=0.21.0" },
+    { name = "numpy", specifier = ">=2.4.1" },
+    { name = "polars", specifier = ">=1.41.2" },
+]
 
 [[package]]
 name = "annotated-doc"

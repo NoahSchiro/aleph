@@ -1,7 +1,6 @@
-# Create a custom docker image to upload to AWS so that Lambda can pull it down
 FROM public.ecr.aws/lambda/python:3.12
-
-COPY backend.py ${LAMBDA_TASK_ROOT}
-RUN pip install fastapi mangum numpy polars boto3
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+COPY backend.py pyproject.toml uv.lock ${LAMBDA_TASK_ROOT}
+RUN uv sync --frozen --only-group serve --no-dev
 
 CMD ["backend.handler"]
