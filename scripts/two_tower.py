@@ -13,8 +13,10 @@ Note: with 2.36M items and batch_size=8192, the expected number of accidental sa
 per batch (a real positive mislabeled as someone else's negative) is small (~batch^2 / (2*n_items) ~
 14 per batch, ~0.2% of the batch). Negligible and not corrected for here.
 """
+import json
 import time
 from argparse import ArgumentParser
+from pathlib import Path
 
 import polars as pl
 import torch
@@ -127,6 +129,16 @@ def main(args):
     if args.ckpt:
         model.load_state_dict(torch.load(args.ckpt, weights_only=True))
     opt = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.decay)
+
+    config = {
+        "embed_dim":  args.embed_dim,
+        "hidden_dim": args.hidden_dim,
+        "output_dim": args.output_dim,
+        "dropout":    args.dropout,
+    }
+    Path(args.output).mkdir(parents=True, exist_ok=True)
+    with open(f"{args.output}tt_config.json", "w") as f:
+        json.dump(config, f)
 
     print("Baseline eval")
     recall, ndcg = evaluate(args, model, eval_users, eval_items, interaction_matrix)
