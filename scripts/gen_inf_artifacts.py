@@ -15,7 +15,8 @@ from argparse import ArgumentParser
 import numpy as np
 import polars as pl
 import torch
-from two_tower import N_ITEMS, N_USERS, TwoTower
+from common import N_ITEMS, N_USERS
+from two_tower import TwoTower
 
 
 def build_item_embeddings(args):
