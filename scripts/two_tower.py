@@ -2,8 +2,9 @@
 Two-tower neural network for implicit feedback.
 
 Trained with in-batch sampled softmax: for a batch of (user, pos_item) pairs, every other user's
-positive item in the batch acts as a free negative (one matmul instead of explicit negative sampling).
-This is the standard two-tower training setup (I believe it matches YouTube's retrieval models).
+positive item in the batch acts as a free negative (one matmul instead of explicit negative
+sampling). This is the standard two-tower training setup (I believe it matches YouTube's retrieval
+models).
 
 YouTube's retrieval model (at least from a decade ago):
 https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf
@@ -12,19 +13,19 @@ Note: with 2.36M items and batch_size=8192, the expected number of accidental sa
 per batch (a real positive mislabeled as someone else's negative) is small (~batch^2 / (2*n_items) ~
 14 per batch, ~0.2% of the batch). Negligible and not corrected for here.
 """
-from argparse import ArgumentParser
 import csv
 import os
-import time
 import random
+import time
+from argparse import ArgumentParser
 
 import numpy as np
 import polars as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tqdm import tqdm
 from scipy.sparse import csr_matrix
+from tqdm import tqdm
 
 # Gleaned from dataset analysis
 N_USERS = 876_146
@@ -122,9 +123,9 @@ def train_epoch(args, model, opt, users, items, weights):
 
         u_vec = model.user_repr(u)   # (B, output_dim)
         i_vec = model.item_repr(pos) # (B, output_dim)
-        
+
         # (B, B), row i's positive is column i
-        logits = (u_vec @ i_vec.T) / args.temperature  
+        logits = (u_vec @ i_vec.T) / args.temperature
         labels = torch.arange(u_vec.shape[0], device=args.device)
 
         if weights is not None:
@@ -183,7 +184,9 @@ def main(args):
     print(f"Device: {args.device}")
 
     print("Loading data...")
-    train_users, train_items, train_weights = load_split("./data/train.parquet", weighted=args.weighted)
+    train_users, train_items, train_weights = load_split(
+        "./data/train.parquet", weighted=args.weighted
+    )
     val_users, val_items, _ = load_split("./data/val.parquet")
 
     print("Building interaction matrix...")
@@ -215,7 +218,7 @@ def main(args):
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     if not os.path.exists(args.output+"tt_log.csv"):
         os.mknod(args.output+"tt_log.csv")
-    
+
     torch.save(model.state_dict(), args.output+"tt_best.pt")
     torch.save(model.state_dict(), args.output+"tt_last.pt")
 

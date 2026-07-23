@@ -104,7 +104,7 @@ def recommend(req: RecommendRequest):
 
     vecs = np.stack(vecs)
     pseudo_user_vec = vecs.sum(axis=0)
-    
+
     input_rows = app.state.book_lookup.filter(
         pl.col("book_id_csv").is_in(req.book_ids)
     )
@@ -130,7 +130,12 @@ def recommend(req: RecommendRequest):
     results = []
     for idx in top_idx:
         title, author = lookup.get(int(idx), ("Unknown", ""))
-        results.append(BookResult(book_id=int(idx), title=title, author=author, score=float(scores[idx])))
+        results.append(BookResult(
+            book_id=int(idx),
+            title=title,
+            author=author,
+            score=float(scores[idx])
+       ))
     return results
 
 

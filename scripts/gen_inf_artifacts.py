@@ -8,20 +8,26 @@ book_lookup.parquet: book_id_csv -> title (+ first author), built by joining boo
 index -> raw goodreads book_id) against goodreads_books.json.gz (raw book_id -> title/author_id) and
 goodreads_book_authors.json.gz (author_id -> name).
 """
-from argparse import ArgumentParser
 import json
 import os
+from argparse import ArgumentParser
 
 import numpy as np
 import polars as pl
 import torch
-
-from two_tower import TwoTower, N_USERS, N_ITEMS
+from two_tower import N_ITEMS, N_USERS, TwoTower
 
 
 def build_item_embeddings(args):
     """For every book in the dataset, compute the embedding."""
-    model = TwoTower(N_USERS, N_ITEMS, args.embed_dim, args.hidden_dim, args.output_dim, args.dropout)
+    model = TwoTower(
+        N_USERS,
+        N_ITEMS,
+        args.embed_dim,
+        args.hidden_dim,
+        args.output_dim,
+        args.dropout
+    )
     model.load_state_dict(torch.load(args.ckpt, map_location="cpu", weights_only=True))
     model.eval()
 

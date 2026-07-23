@@ -1,18 +1,18 @@
 """
 BPR-MF baseline for implicit feedback.
 """
-from argparse import ArgumentParser
 import csv
 import os
-import time
 import random
+import time
+from argparse import ArgumentParser
 
 import numpy as np
 import polars as pl
 import torch
 import torch.nn as nn
-from tqdm import tqdm
 from scipy.sparse import csr_matrix
+from tqdm import tqdm
 
 # Gleaned from dataset analysis
 N_USERS = 876_146
@@ -64,7 +64,7 @@ def train_epoch(args, model, opt, users, items, n_items, n_candidates=10):
         idx = perm[start : start + args.batch]
         u = users[idx].to(args.device, non_blocking=True).long()
         pos = items[idx].to(args.device, non_blocking=True).long()
- 
+
         bsz = u.shape[0]
         neg_candidates = torch.randint(0, n_items, (bsz, n_candidates), device=args.device)
         with torch.no_grad():
@@ -73,48 +73,48 @@ def train_epoch(args, model, opt, users, items, n_items, n_candidates=10):
             cand_scores = cand_scores.view(bsz, n_candidates)
             hardest_idx = cand_scores.argmax(dim=1)
         neg = neg_candidates[torch.arange(bsz, device=args.device), hardest_idx]
- 
+
         pos_score = model.score(u, pos)
         neg_score = model.score(u, neg)
         loss = -torch.log(torch.sigmoid(pos_score - neg_score) + 1e-10).mean()
- 
+
         opt.zero_grad()
         loss.backward()
         opt.step()
- 
+
         total_loss += loss.item()
         n_batches += 1
- 
+
     return total_loss / n_batches
 
 
 def evaluate(args, model, eval_users, eval_items, interaction_matrix):
     model.eval()
     recalls, ndcgs = [], []
- 
+
     eval_users_np = eval_users.cpu().numpy()
     eval_items_np = eval_items.cpu().numpy()
- 
+
     for u, pos_item in zip(eval_users_np, eval_items_np):
         user_history = set(interaction_matrix.getrow(u).indices.tolist())
- 
+
         negs = []
         while len(negs) < args.negatives:
             cand = np.random.randint(0, N_ITEMS, size=args.negatives - len(negs))
             cand = [c for c in cand if c not in user_history and c != pos_item]
             negs.extend(cand)
         negs = negs[:args.negatives]
- 
+
         candidates = torch.tensor([pos_item] + negs, dtype=torch.long, device=args.device)
         u_tensor = torch.full((len(candidates),), u, dtype=torch.long, device=args.device)
         scores = model.score(u_tensor, candidates).cpu().detach().numpy()
- 
+
         ranking = np.argsort(-scores)
         rank_of_pos = np.where(ranking == 0)[0][0]
- 
+
         recalls.append(1.0 if rank_of_pos < args.k else 0.0)
         ndcgs.append(1.0 / np.log2(rank_of_pos + 2) if rank_of_pos < args.k else 0.0)
- 
+
     return np.mean(recalls), np.mean(ndcgs)
 
 
@@ -157,7 +157,7 @@ def main(args):
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     if not os.path.exists(args.output+"/log.csv"):
         os.mknod(args.output+"/log.csv")
-    
+
     torch.save(model.state_dict(), args.output + "/bpr_best.pt")
     torch.save(model.state_dict(), args.output + "/bpr_last.pt")
 
@@ -179,7 +179,7 @@ def main(args):
         t0 = time.time()
         loss = train_epoch(args, model, opt, train_users, train_items, N_ITEMS)
         recall, ndcg = evaluate(args, model, eval_users, eval_items, interaction_matrix)
-        elapsed = time.time()-t0 
+        elapsed = time.time()-t0
         print(
             f"epoch {epoch+1}/{args.epoch}  loss {loss:.4f}  "
             f"recall@{args.k} {recall:.4f}  ndcg@{args.k} {ndcg:.4f}  "
