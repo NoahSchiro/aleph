@@ -8,6 +8,7 @@ to /tmp on cold start and cached there for the life of the container. Warm invoc
 download.
 """
 import os
+import re
 
 import boto3
 import numpy as np
@@ -68,14 +69,16 @@ def search(q: str, limit: int = 20):
     if len(q) < 2:
         raise HTTPException(400, "query too short")
 
-    tokens = q.lower().split()
+    tokens = re.findall(r"\w+", q.lower())
     df = app.state.book_lookup
+    title_clean = pl.col("title").str.replace_all(r"[^\w\s]", "").str.to_lowercase()
+    author_clean = pl.col("author").str.replace_all(r"[^\w\s]", "").str.to_lowercase()
 
     mask = pl.lit(True)
     for tok in tokens:
         mask = mask & (
-            pl.col("title").str.to_lowercase().str.contains(tok, literal=True)
-            | pl.col("author").str.to_lowercase().str.contains(tok, literal=True)
+            title_clean.str.contains(tok, literal=True)
+            | author_clean.str.contains(tok, literal=True)
         )
 
     matches = df.filter(mask).head(limit)
