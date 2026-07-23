@@ -104,7 +104,7 @@ model out.
 
 Strategy:
 - Use github.io for the frontend site. I don't want to pay for the frontend stuff. The frontend will
-be handled in another repo which I will link [here]().
+be handled in [another repo](https://github.com/NoahSchiro/aleph-web).
 - Use Lambda as the backend. Costs money, but should be pretty minimal because I don't expect too many
 users.
 
