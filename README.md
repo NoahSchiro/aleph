@@ -1,5 +1,7 @@
 # Aleph
 
+Live demo available at [https://noahschiro.github.io/aleph-web/](https://noahschiro.github.io/aleph-web/).
+
 ### Download data
 
 I put these files in a `data` dir:
